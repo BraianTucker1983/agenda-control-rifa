@@ -7,7 +7,7 @@ class AgendaControlRifa {
 
   // 📱 CONFIGURACIÓN DE CONTACTO Y DESPLIEGUE
   private readonly TELEFONO_ADMINISTRADORA: string = '5492926405179';
-  private readonly URL_APP_VERCEL: string = 'https://agenda-control-rifa.pages.dev';
+  private readonly URL_APP_PAGES: string = 'https://agenda-control-rifa.pages.dev';
 
   constructor() {
     this.cargarDatos();
@@ -127,7 +127,6 @@ class AgendaControlRifa {
 
     if (!num) return;
 
-    // Verificar si el número tiene un comprador asignado o está ocupado/reservado
     const estaOcupado = num.estado !== 'disponible' || (num.comprador && num.comprador.nombre.trim() !== '');
 
     if (estaOcupado) {
@@ -140,15 +139,14 @@ class AgendaControlRifa {
 
       if (!confirmado) {
         this.numeroSeleccionado = null;
-        return; // Cancelar si presionó 'Cancelar' o la 'X'
+        return;
       }
     }
 
-    // Si estaba libre O si confirmó que desea modificarlo, abre el formulario
     this.renderModal();
   }
 
-  // 💾 GUARDAR FICHA DEL COMPRADOR (GUARDA FECHA Y HORA EXACTA)
+  // 💾 GUARDAR FICHA DEL COMPRADOR
   public guardarRegistro(e: Event): void {
     e.preventDefault();
     if (this.numeroSeleccionado === null) return;
@@ -174,15 +172,15 @@ class AgendaControlRifa {
           vendedor: '',
           metodoPago,
           notas,
-          fechaRegistro: new Date().toISOString() // ⏱️ Guardamos fecha y hora exactas en formato ISO
+          fechaRegistro: new Date().toISOString()
         };
       } else {
-        delete num.comprador; // Si se vuelve a disponible, se borra el registro
+        delete num.comprador;
       }
 
       this.guardarDatos();
       this.cerrarModal();
-      this.render(); // Se actualiza la pantalla al instante para seguir anotando
+      this.render();
     }
   }
 
@@ -243,25 +241,40 @@ class AgendaControlRifa {
     document.getElementById('form-registro')?.addEventListener('submit', (e) => this.guardarRegistro(e));
   }
 
-  // 📲 ENVIAR REPORTE COMPLETO Y NOVEDADES AL WHATSAPP
-  public enviarDisponiblesAdmin(): void {
-    // 1. Obtener fecha y hora del último reporte enviado
-    const ultimaFechaStr = localStorage.getItem('rifa_ultimo_envio_wa');
-    const ultimaFechaEnvio = ultimaFechaStr ? new Date(ultimaFechaStr) : null;
-
-    // 2. Obtener lista de números libres
+  // 📢 MENSAJE 1: PUBLICIDAD Y DISPONIBLES (ENVIADO AL WHATSAPP DE LA ADMIN)
+  public compartirMensajeClientes(): void {
     const disponibles = this.numeros
       .filter(n => n.estado === 'disponible')
       .map(n => String(n.id).padStart(2, '0'));
 
-    // 3. Filtrar ventas desde el último reporte
+    let mensaje = `🎉 *¡GRAN TÓMBOLA DE $500.000 EN EFECTIVO!* 🎉\n\n`;
+    mensaje += `💰 *Valor del número:* $${this.PRECIO_BOLETO.toLocaleString()}\n`;
+    mensaje += `🏆 *Premio Mayor:* $500.000\n`;
+    mensaje += `⏳ *Sortea:* Inmediatamente al completarse los 100 números.\n\n`;
+
+    if (disponibles.length > 0) {
+      mensaje += `🟢 *NÚMEROS DISPONIBLES (${disponibles.length} de 100):*\n`;
+      mensaje += `${disponibles.join(', ')}\n\n`;
+      mensaje += `📲 *Reservá el tuyo escribiendo al:* 2926-405179`;
+    } else {
+      mensaje += `🎉 *¡AGOTADO TOTAL! No quedan números libres.*`;
+    }
+
+    const urlWhatsApp = `https://api.whatsapp.com/send?phone=${this.TELEFONO_ADMINISTRADORA}&text=${encodeURIComponent(mensaje)}`;
+    window.open(urlWhatsApp, '_blank');
+  }
+
+  // 📊 MENSAJE 2: NOVEDADES Y CONTROL (ENVIADO AL WHATSAPP DE LA ADMIN)
+  public compartirReporteAdmin(): void {
+    const ultimaFechaStr = localStorage.getItem('rifa_ultimo_envio_wa');
+    const ultimaFechaEnvio = ultimaFechaStr ? new Date(ultimaFechaStr) : null;
+
     const ultimasVentas: string[] = [];
 
     this.numeros.forEach(n => {
       if (n.estado !== 'disponible' && n.comprador) {
         const fechaReg = n.comprador.fechaRegistro ? new Date(n.comprador.fechaRegistro) : new Date();
 
-        // Incluye el comprador si es posterior al último envío o si nunca se envió un informe
         if (!ultimaFechaEnvio || fechaReg >= ultimaFechaEnvio) {
           const numPadded = String(n.id).padStart(2, '0');
           const estadoIcono = n.estado === 'pagado' ? '🔴 (PAGADO)' : '🟡 (PENDIENTE)';
@@ -270,31 +283,19 @@ class AgendaControlRifa {
       }
     });
 
-    // 4. Armar texto del mensaje
-    let mensaje = `🎟️ *GRAN TÓMBOLA - ACTUALIZACIÓN DE CONTROL*\n`;
-    mensaje += `💰 *Valor por número:* $${this.PRECIO_BOLETO.toLocaleString()}\n\n`;
+    let mensaje = `📋 *REPORTE DE CONTROL - TÓMBOLA*\n\n`;
 
     if (ultimasVentas.length > 0) {
       mensaje += `🆕 *ÚLTIMAS VENTAS REGISTRADAS (${ultimasVentas.length}):*\n`;
       mensaje += `${ultimasVentas.join('\n')}\n\n`;
     } else {
-      mensaje += `ℹ️ *Sin nuevas ventas registradas desde el último reporte.*\n\n`;
+      mensaje += `ℹ️ *Sin nuevas ventas anotadas desde el último reporte.*\n\n`;
     }
 
-    if (disponibles.length > 0) {
-      mensaje += `🟢 *LIBRES (${disponibles.length} de 100):*\n`;
-      mensaje += `${disponibles.join(', ')}\n\n`;
-    } else {
-      mensaje += `🎉 *¡AGOTADO TOTAL! No quedan números disponibles.*\n\n`;
-    }
+    mensaje += `🌐 *Acceso a la app de gestión:* ${this.URL_APP_PAGES}`;
 
-    mensaje += `📲 *¡Escribinos para reservar el tuyo!*\n`;
-    mensaje += `🌐 *Acceder al sistema:* ${this.URL_APP_VERCEL}`;
-
-    // 5. Guardar timestamp actual para el próximo clic
     localStorage.setItem('rifa_ultimo_envio_wa', new Date().toISOString());
 
-    // 6. Abrir enlace de WhatsApp
     const urlWhatsApp = `https://api.whatsapp.com/send?phone=${this.TELEFONO_ADMINISTRADORA}&text=${encodeURIComponent(mensaje)}`;
     window.open(urlWhatsApp, '_blank');
   }
@@ -361,17 +362,26 @@ class AgendaControlRifa {
         </article>
       </section>
 
-      <!-- Grilla de Botones -->
+      <!-- Grilla de Botones y Acciones de WhatsApp -->
       <main>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
           <h3>Grilla de números</h3>
           
-          <button 
-            class="outline contrast" 
-            style="border-color: #25D366; color: #25D366; font-weight: bold;"
-            onclick="window.app.enviarDisponiblesAdmin()">
-            📲 Enviar Libres por WhatsApp
-          </button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <button 
+              class="outline contrast" 
+              style="border-color: #25D366; color: #25D366; font-weight: bold; font-size: 0.85rem;"
+              onclick="window.app.compartirMensajeClientes()">
+              📢 Compartir Libres (Clientes)
+            </button>
+
+            <button 
+              class="outline secondary" 
+              style="font-size: 0.85rem;"
+              onclick="window.app.compartirReporteAdmin()">
+              📊 Novedades (Control)
+            </button>
+          </div>
         </div>
 
         <!-- Leyenda de colores -->
