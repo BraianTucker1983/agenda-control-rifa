@@ -148,7 +148,7 @@ class AgendaControlRifa {
     this.renderModal();
   }
 
-  // 💾 GUARDAR FICHA DEL COMPRADOR
+  // 💾 GUARDAR FICHA DEL COMPRADOR (GUARDA FECHA Y HORA EXACTA)
   public guardarRegistro(e: Event): void {
     e.preventDefault();
     if (this.numeroSeleccionado === null) return;
@@ -174,7 +174,7 @@ class AgendaControlRifa {
           vendedor: '',
           metodoPago,
           notas,
-          fechaRegistro: new Date().toLocaleDateString()
+          fechaRegistro: new Date().toISOString() // ⏱️ Guardamos fecha y hora exactas en formato ISO
         };
       } else {
         delete num.comprador; // Si se vuelve a disponible, se borra el registro
@@ -243,27 +243,58 @@ class AgendaControlRifa {
     document.getElementById('form-registro')?.addEventListener('submit', (e) => this.guardarRegistro(e));
   }
 
-  // 📲 ENVIAR DISPONIBLES AL WHATSAPP DE LA ADMINISTRADORA
+  // 📲 ENVIAR REPORTE COMPLETO Y NOVEDADES AL WHATSAPP
   public enviarDisponiblesAdmin(): void {
+    // 1. Obtener fecha y hora del último reporte enviado
+    const ultimaFechaStr = localStorage.getItem('rifa_ultimo_envio_wa');
+    const ultimaFechaEnvio = ultimaFechaStr ? new Date(ultimaFechaStr) : null;
+
+    // 2. Obtener lista de números libres
     const disponibles = this.numeros
       .filter(n => n.estado === 'disponible')
       .map(n => String(n.id).padStart(2, '0'));
 
-    if (disponibles.length === 0) {
-      alert(`¡Agotado total! No quedan números libres. 🎉`);
-      return;
+    // 3. Filtrar ventas desde el último reporte
+    const ultimasVentas: string[] = [];
+
+    this.numeros.forEach(n => {
+      if (n.estado !== 'disponible' && n.comprador) {
+        const fechaReg = n.comprador.fechaRegistro ? new Date(n.comprador.fechaRegistro) : new Date();
+
+        // Incluye el comprador si es posterior al último envío o si nunca se envió un informe
+        if (!ultimaFechaEnvio || fechaReg >= ultimaFechaEnvio) {
+          const numPadded = String(n.id).padStart(2, '0');
+          const estadoIcono = n.estado === 'pagado' ? '🔴 (PAGADO)' : '🟡 (PENDIENTE)';
+          ultimasVentas.push(`• *N° ${numPadded}*: ${n.comprador.nombre} ${estadoIcono}`);
+        }
+      }
+    });
+
+    // 4. Armar texto del mensaje
+    let mensaje = `🎟️ *GRAN TÓMBOLA - ACTUALIZACIÓN DE CONTROL*\n`;
+    mensaje += `💰 *Valor por número:* $${this.PRECIO_BOLETO.toLocaleString()}\n\n`;
+
+    if (ultimasVentas.length > 0) {
+      mensaje += `🆕 *ÚLTIMAS VENTAS REGISTRADAS (${ultimasVentas.length}):*\n`;
+      mensaje += `${ultimasVentas.join('\n')}\n\n`;
+    } else {
+      mensaje += `ℹ️ *Sin nuevas ventas registradas desde el último reporte.*\n\n`;
     }
 
-    const mensaje = 
-`🎟️ *GRAN RIFA - NÚMEROS DISPONIBLES*
-💰 *Valor por número:* $${this.PRECIO_BOLETO.toLocaleString()}
+    if (disponibles.length > 0) {
+      mensaje += `🟢 *LIBRES (${disponibles.length} de 100):*\n`;
+      mensaje += `${disponibles.join(', ')}\n\n`;
+    } else {
+      mensaje += `🎉 *¡AGOTADO TOTAL! No quedan números disponibles.*\n\n`;
+    }
 
-🟢 *Libres (${disponibles.length} de 100):*
-${disponibles.join(', ')}
+    mensaje += `📲 *¡Escribinos para reservar el tuyo!*\n`;
+    mensaje += `🌐 *Acceder al sistema:* ${this.URL_APP_VERCEL}`;
 
-🌐 *Acceder al sistema:*
-${this.URL_APP_VERCEL}`;
+    // 5. Guardar timestamp actual para el próximo clic
+    localStorage.setItem('rifa_ultimo_envio_wa', new Date().toISOString());
 
+    // 6. Abrir enlace de WhatsApp
     const urlWhatsApp = `https://api.whatsapp.com/send?phone=${this.TELEFONO_ADMINISTRADORA}&text=${encodeURIComponent(mensaje)}`;
     window.open(urlWhatsApp, '_blank');
   }
