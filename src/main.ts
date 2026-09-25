@@ -261,8 +261,6 @@ class AgendaControlRifa {
 🟢 *Libres (${disponibles.length} de 100):*
 ${disponibles.join(', ')}
 
-📲 *¡Escribinos para reservar el tuyo!*
-
 🌐 *Acceder al sistema:*
 ${this.URL_APP_VERCEL}`;
 
