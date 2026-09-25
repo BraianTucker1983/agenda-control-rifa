@@ -285,7 +285,7 @@ ${this.URL_APP_VERCEL}`;
       <header style="margin-bottom: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h1>📖 Agenda de Control de Rifa</h1>
+            <h1>📖 Control de Tómbola</h1>
             <p><small>Sorteo de 100 Números (00 - 99) | Valor: <b>$10.000</b></small></p>
           </div>
 
@@ -335,7 +335,7 @@ ${this.URL_APP_VERCEL}`;
       <!-- Grilla de Botones -->
       <main>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-          <h3>Grilla de Boletos</h3>
+          <h3>Grilla de numeros</h3>
           
           <button 
             class="outline contrast" 
