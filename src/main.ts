@@ -146,7 +146,7 @@ class AgendaControlRifa {
     this.renderModal();
   }
 
-  // 💾 GUARDAR FICHA DEL COMPRADOR
+  // 💾 GUARDAR FICHA DEL COMPRADOR + COMPROBANTE AL WHATSAPP DE LA ADMIN
   public guardarRegistro(e: Event): void {
     e.preventDefault();
     if (this.numeroSeleccionado === null) return;
@@ -181,6 +181,21 @@ class AgendaControlRifa {
       this.guardarDatos();
       this.cerrarModal();
       this.render();
+
+      // 📲 SI EL NÚMERO SE ASIGNÓ (RESERVADO O PAGADO), GENERAR COMPROBANTE HACIA LA ADMIN
+      if (estado !== 'disponible' && nombre.trim() !== '') {
+        const numPadded = String(num.id).padStart(2, '0');
+        const estadoTexto = estado === 'pagado' ? 'PAGADO 🔴' : 'PAGO PENDIENTE 🟡';
+
+        let msgComprobante = `🎉 *¡Hola, ${nombre}!*\n\n`;
+        msgComprobante += `🎟️ *¡Confirmado!* Tenés asignado el *N° ${numPadded}* para la *Gran Tómbola*.\n`;
+        msgComprobante += `💰 *Estado:* ${estadoTexto}\n`;
+        msgComprobante += `🏆 *Premio:* $500.000 en efectivo\n\n`;
+        msgComprobante += `🍀 *¡Mucha suerte!*`;
+
+        const urlWhatsApp = `https://api.whatsapp.com/send?phone=${this.TELEFONO_ADMINISTRADORA}&text=${encodeURIComponent(msgComprobante)}`;
+        window.open(urlWhatsApp, '_blank');
+      }
     }
   }
 
