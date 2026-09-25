@@ -6,7 +6,7 @@ class AgendaControlRifa {
   private readonly PRECIO_BOLETO: number = 10000; // 💵 $10.000 ARS
 
   // 📱 CONFIGURACIÓN DE CONTACTO Y DESPLIEGUE
-  private readonly TELEFONO_ADMINISTRADORA: string = '5492926466613';
+  private readonly TELEFONO_ADMINISTRADORA: string = '5492926405179';
   private readonly URL_APP_VERCEL: string = 'https://agenda-control-rifa.pages.dev';
 
   constructor() {
