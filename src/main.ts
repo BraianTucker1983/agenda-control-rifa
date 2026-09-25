@@ -6,8 +6,8 @@ class AgendaControlRifa {
   private readonly PRECIO_BOLETO: number = 10000; // 💵 $10.000 ARS
 
   // 📱 CONFIGURACIÓN DE CONTACTO Y DESPLIEGUE
-  private readonly TELEFONO_ADMINISTRADORA: string = '5492926466613'; // 👈 Tu número de WhatsApp aquí
-  private readonly URL_APP_VERCEL: string = 'https://tu-app.vercel.app'; // 👈 Reemplaza con tu URL real de Vercel
+  private readonly TELEFONO_ADMINISTRADORA: string = '5492926466613';
+  private readonly URL_APP_VERCEL: string = 'https://agenda-control-rifa.pages.dev';
 
   constructor() {
     this.cargarDatos();
@@ -82,9 +82,69 @@ class AgendaControlRifa {
     reader.readAsText(file);
   }
 
-  // 📝 ABRIR MODAL AL TOCAR CUALQUIER NÚMERO
-  public manejarClicNumero(numeroId: number): void {
+  // 🔔 MODAL ELEGANTE DE CONFIRMACIÓN (SOLO PARA NÚMEROS OCUPADOS)
+  private pedirConfirmacion(mensaje: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const numFormateado = String(this.numeroSeleccionado).padStart(2, '0');
+      const dialogHTML = `
+        <dialog id="modal-confirmar" open>
+          <article style="max-width: 400px;">
+            <header>
+              <button aria-label="Cerrar" class="close" id="btn-cancelar-x"></button>
+              <strong>⚠️ Confirmar Modificación</strong>
+            </header>
+            <p style="margin-bottom: 1rem;">${mensaje}</p>
+            <footer style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+              <button class="secondary outline" id="btn-cancelar-modal" style="width: auto;">Cancelar</button>
+              <button class="contrast" id="btn-aceptar-modal" style="width: auto;">Sí, modificar N° ${numFormateado}</button>
+            </footer>
+          </article>
+        </dialog>
+      `;
+
+      document.body.insertAdjacentHTML('beforeend', dialogHTML);
+
+      const dialog = document.getElementById('modal-confirmar') as HTMLDialogElement;
+      const btnAceptar = document.getElementById('btn-aceptar-modal');
+      const btnCancelar = document.getElementById('btn-cancelar-modal');
+      const btnCancelarX = document.getElementById('btn-cancelar-x');
+
+      const cerrar = (confirmado: boolean) => {
+        dialog?.remove();
+        resolve(confirmado);
+      };
+
+      btnAceptar?.addEventListener('click', () => cerrar(true));
+      btnCancelar?.addEventListener('click', () => cerrar(false));
+      btnCancelarX?.addEventListener('click', () => cerrar(false));
+    });
+  }
+
+  // 📝 MANEJAR CLIC EN CUALQUIER NÚMERO
+  public async manejarClicNumero(numeroId: number): Promise<void> {
     this.numeroSeleccionado = numeroId;
+    const num = this.numeros.find(n => n.id === numeroId);
+
+    if (!num) return;
+
+    // Verificar si el número tiene un comprador asignado o está ocupado/reservado
+    const estaOcupado = num.estado !== 'disponible' || (num.comprador && num.comprador.nombre.trim() !== '');
+
+    if (estaOcupado) {
+      const nombreComprador = num.comprador?.nombre || 'un comprador';
+      const estadoTexto = num.estado === 'pagado' ? 'PAGADO' : 'PENDIENTE DE PAGO';
+      
+      const confirmado = await this.pedirConfirmacion(
+        `El boleto <b>N° ${String(numeroId).padStart(2, '0')}</b> está asignado a <b>${nombreComprador}</b> (${estadoTexto}).<br><br>¿Estás segura de que deseas ver o cambiar sus datos?`
+      );
+
+      if (!confirmado) {
+        this.numeroSeleccionado = null;
+        return; // Cancelar si presionó 'Cancelar' o la 'X'
+      }
+    }
+
+    // Si estaba libre O si confirmó que desea modificarlo, abre el formulario
     this.renderModal();
   }
 
@@ -183,7 +243,7 @@ class AgendaControlRifa {
     document.getElementById('form-registro')?.addEventListener('submit', (e) => this.guardarRegistro(e));
   }
 
-  // 📲 ENVIAR DISPONIBLES AL WHATSAPP DE LA ADMINISTRADORA (INCLUYE LINK A VERCEL)
+  // 📲 ENVIAR DISPONIBLES AL WHATSAPP DE LA ADMINISTRADORA
   public enviarDisponiblesAdmin(): void {
     const disponibles = this.numeros
       .filter(n => n.estado === 'disponible')
