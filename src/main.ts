@@ -335,7 +335,7 @@ ${this.URL_APP_VERCEL}`;
       <!-- Grilla de Botones -->
       <main>
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
-          <h3>Grilla de numeros</h3>
+          <h3>Grilla de números</h3>
           
           <button 
             class="outline contrast" 
